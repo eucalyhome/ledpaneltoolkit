@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+
+use CGI;
+use File::Copy;
+
+my $SAVE_DIR = '/data/web/root/uploaddata';
+
+my $q = CGI->new;
+my @files = $q->param('file');
+undef (@filearray);
+$count = 0;
+for my $filename (@files) {
+ $tempfilename = $filename;
+# $tempfilename =~ m{(\.[\w]+)$};
+ $tempfilename =~ s/[^\w\.]//g;
+ $tempfilename = lc($tempfilename);
+ if (length($tempfilename) > 20){
+  my $slength = length($tempfilename);
+  $slength = $slength - 20;
+  $tempfilename = substr($tempfilename,$slength);
+ }
+ $temptime = time;
+ $tempfilename = $temptime . "_" . $tempfilename;
+
+ (@ld) = localtime (time);
+ $lt = sprintf("%04d/%02d/%02d %02d:%02d:%02d",$ld[5]+1900,$ld[4]+1,$ld[3],$ld[2],$ld[1],$ld[0]);
+ open (FILE,">>/data/web/cgi/upload.txt");
+ print FILE "$filename\t$tempfilename\t$lt\t\t\t\n";
+ close (FILE);
+ copy($q->tmpFileName($filename), "$SAVE_DIR/$tempfilename") or die $!;
+ push(@filearray,$tempfilename);
+ $count++;
+ if ($count > 2){last;}
+}
+
+print "Content-type: text/html\n\n<html>success</html";

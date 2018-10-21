@@ -1,0 +1,1223 @@
+#!/usr/bin/perl
+
+use Imager;
+use Image::Seek qw(loaddb add_image query_id savedb);
+use Storable qw/nfreeze thaw/;
+
+if ($ENV{'REQUEST_METHOD'} eq "POST") {
+read(STDIN, $query_string, $ENV{'CONTENT_LENGTH'});}
+ else {$query_string = $ENV{'QUERY_STRING'};}
+@a = split(/&/, $query_string);
+foreach $x (@a) {
+ ($name, $value) = split(/=/, $x);
+ $value =~ tr/+/ /;
+ $value =~ s/%([0-9a-fA-F][0-9a-fA-F])/pack("C", hex($1))/eg;
+ $FORM{$name} = $value;
+}
+
+undef (@listarray);
+undef (%imagename);
+
+$imgdb    = '/data/web/facedb/imgseek.db';
+$imagedir = "/imagerawdir/";
+$setupfile = "/data/web/cgi/manageled.config";
+$fontlistfile = "/data/web/cgi/fontlist.config";
+$colorlistfile = "/data/web/cgi/colorlist.config";
+$weeklistfile = "/data/web/cgi/weeklist.config";
+$complistfile = "/data/web/cgi/complist.config";
+$uploadfile = "/data/web/cgi/upload.txt";
+$uploaddir = "/uploaddata/";
+
+$listarraycount = 17778;
+undef (%setting);
+
+&loadsetup;
+
+$rflag = 0;
+$faceviewflag = 0;
+
+if ($FORM{r} eq "y"){
+ $rflag = 1;
+}
+
+$iflag = 0;
+if ($query_string eq ""){$iflag = 1;}
+if ($FORM{i} eq "y"){$iflag = 1;}
+if ($FORM{menu} ne ""){
+ $menuflag = $FORM{menu};
+ if ($FORM{action} eq "apply"){
+  undef (@savevalue);
+  if ($FORM{menu} eq "view"){
+   (@savevalue) = ("anniverse-enable","endtrans-enable","tokoyami-enable","boueigun-enable","faceicon-enable","freeword-enable","logo-enable","clock-enable");
+  }
+  if ($FORM{menu} eq "viewoption"){
+   (@savevalue) = ("viewoption-contspeed","viewoption-wipespeed","viewoption-wipeselect","viewoption-scrollspeed","viewoption-fontselect","viewoption-bgmorfspeed","viewoption-bgmorftype","viewoption-bgmorfwait","viewoption-intpriority");
+  }
+  if ($FORM{menu} eq "base"){
+   (@savevalue) = ("base-fontdir","base-imagedir","base-uploaddir","base-mosaicdir","base-boueigunresourcedir","base-tokoyamiresourcedir","base-icondir","base-pukulistfile","base-dwalistfile","base-irdir","base-resourcedir");
+  }
+
+  if ($FORM{menu} eq "ledoption"){
+   (@savevalue) = ("ledoption-hardwaremapping","ledoption-rgbsequence","ledoption-rows","ledoption-chainlength","ledoption-parallel","ledoption-pwmbits","ledoption-brightness","ledoption-pwmlsbnanoseconds","ledoption-slowdowngpio");
+  }
+  if ($FORM{menu} eq "freeword"){
+   for $i (1..9){
+    $settingpointer = "freeword-$i"."value";
+    $switchpointer = "freeword-$i"."enable";
+    $colorpointer = "freeword-$i"."color";
+    $shadowpointer = "freeword-$i"."shadow";
+    $bgcolorpointer = "freeword-$i"."bgcolor";
+    push(@savevalue,$settingpointer);
+    push(@savevalue,$switchpointer);
+    push(@savevalue,$colorpointer);
+    push(@savevalue,$shadowpointer);
+    push(@savevalue,$bgcolorpointer);
+   }
+  }
+  if ($FORM{menu} eq "anniverse"){
+   push(@savevalue,"anniverse-bgmorf");
+   push(@savevalue,"anniverse-bgmorftype");
+   for $i (1..9){
+    $settingfilename = "anniverse-$i"."filename";
+    $settingpointer = "anniverse-$i"."value";
+    $switchpointer = "anniverse-$i"."enable";
+    $daypointer = "anniverse-$i"."day";
+    $weekpointer = "anniverse-$i"."week";
+    ($FORM{$settingfilename},$FORM{$settingpointer}) = split(/--_--/,$FORM{$settingfilename});
+    push(@savevalue,$settingpointer);
+    push(@savevalue,$switchpointer);
+    push(@savevalue,$settingfilename);
+    push(@savevalue,$daypointer);
+    push(@savevalue,$weekpointer);
+   }
+  }
+  if ($FORM{menu} eq "logo"){
+   push(@savevalue,"logo-bgmorf");
+   push(@savevalue,"logo-bgmorftype");
+   for $i (1..9){
+    $settingpointer = "logo-$i"."value";
+    $settingfilename = "logo-$i"."filename";
+    $switchpointer = "logo-$i"."enable";
+    ($FORM{$settingfilename},$FORM{$settingpointer}) = split(/--_--/,$FORM{$settingfilename});
+    push(@savevalue,$settingpointer);
+    push(@savevalue,$switchpointer);
+    push(@savevalue,$settingfilename);
+   }
+  }
+  if ($FORM{menu} eq "clock"){
+   (@savevalue) = ("clock-bgmorf","clock-bgmorftype");
+  }
+  if ($FORM{menu} eq "remote"){
+   (@savevalue) = ("remote-enable");
+  }
+  if ($FORM{menu} eq "endtrans"){
+   push(@savevalue,"endtrans-starttime");
+   @endtransarray = ("h","d","k");
+   foreach $j (@endtransarray){
+    for $i (1..9){
+     $settingtitle = "endtrans-$j$i"."title";
+     $settingvalue = "endtrans-$j$i"."value";
+     push(@savevalue,$settingtitle);
+     push(@savevalue,$settingvalue);
+    }
+   }
+  }
+  if ($FORM{menu} eq "faceicon"){
+   (@savevalue) = ("faceicon-listenable","faceicon-pukuenable","faceicon-dwaenable");
+   for $i (1..49){
+    $settingpointer = "faceicon-list$i"."name";
+    $switchpointer = "faceicon-list$i"."enable";
+    push(@savevalue,$settingpointer);
+    push(@savevalue,$switchpointer);
+   }
+  }
+  if ($FORM{menu} eq "faceiconsub"){
+   $iconpointer = "faceicon-list$FORM{'id'}"."icon";
+   $FORM{$iconpointer} = $FORM{'icon'};
+   push(@savevalue,$iconpointer);
+   $menuflag = "faceicon";
+  }
+  if ($FORM{menu} eq "filemanage"){
+   &filemanagesub;
+  }
+  &savesetup;
+  &loadsetup;
+ }
+}
+
+
+
+if ($FORM{s} ne ""){
+ $faceviewflag = 1;
+ loaddb($imgdb);
+ $searchquery = $FORM{s};
+ $searchquery =~ s/\D//g;
+ @results = query_id($searchquery, 99);
+ foreach(@results){
+  foreach (@$_){
+   if ($gid == ""){
+    $gid = $_;
+    next;
+   }
+   $gvec = $_;
+  }
+  push(@imagearray,$gid);
+  $gid = "";
+  $gvec = "";
+ }
+ $FORM{q} = "";
+}
+
+if ($FORM{r} eq "on"){
+ $faceviewflag = 1;
+ for $i (0..59){
+  for $k (0..10){
+   $randbaseimageseed = int(rand($listarraycount));
+   $randbaseimageseed++;
+   for $j (0..59){
+    if ($randbaseimageseed == $imagearray[$j]){
+     $randbaseimageseed = "";
+     last;
+    }
+   }
+   if ($randbaseimageseed ne ""){
+    last;
+   }
+  }
+  if ($randbaseimageseed eq ""){
+   $randbaseimageseed = 1;
+  }
+  $imagearray[$i] = $randbaseimageseed;
+ }
+}
+
+print "Content-type: text/html\n\n";
+
+print '
+<!doctype html>
+<html class="no-js" lang="ja" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>manageled</title>
+    <link rel="stylesheet" href="/css/foundation.css">
+    <link rel="stylesheet" href="/css/app.css">
+    <link href="/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/css/timepicki.css">
+    <link rel="stylesheet" href="/css/dropzone.css" />
+    <style type="text/css">.footer{position:fixed; bottom:0; z-index:100000}
+    @media screen and (max-width: 39.9375em) {
+  .no-js .top-bar {
+    display: none;
+  }
+}
+
+@media print, screen and (min-width: 40em) {
+  .no-js .title-bar {
+    display: none;
+  }
+}
+
+[data-sticky] {
+  width: 100%;
+}
+
+.sticky-container {
+  z-index: 5;
+}
+.dz-preview {
+  display:none;
+}
+</style>
+  </head>
+  <body>
+<form action="/app/manageled" method="post">
+<div data-sticky-container>
+  <div data-sticky data-options="marginTop:0;">
+
+    <div class="title-bar" data-responsive-toggle="example-menu" data-hide-for="medium">
+      <button class="menu-icon" type="button" data-toggle="example-menu"></button>
+      <div class="title-bar-title">ManageLED</div>
+    </div>
+
+    <div class="top-bar" id="example-menu">
+      <ul class="vertical medium-horizontal dropdown menu" data-responsive-menu="accordion medium-dropdown">
+        <li class="menu-text">ManageLED</li>
+        <li>
+          <a href="#">設定</a>
+          <ul class="menu vertical nested">
+            <li><a href="/app/manageled?menu=view">表示設定</a></li>
+            <li><a href="/app/manageled?menu=viewoption">表示属性設定</a></li>
+            <li><a href="/app/manageled?menu=freeword">フリーワード設定</a></li>
+            <li><a href="/app/manageled?menu=logo">ロゴ設定</a></li>
+            <li><a href="/app/manageled?menu=clock">時計設定</a></li>
+            <li><a href="/app/manageled?menu=anniverse">記念日設定</a></li>
+            <li><a href="/app/manageled?menu=endtrans">終電設定</a></li>
+            <li><a href="/app/manageled?menu=faceicon">フェイスアイコン設定</a></li>
+            <li><a href="/app/manageled?menu=remote">リモコン設定</a></li>
+            <li><a href="/app/manageled?menu=filemanage">ファイル管理設定</a></li>
+            <li><a href="/app/manageled?menu=ledoption">LEDパネル設定</a></li>
+            <li><a href="/app/manageled?menu=base">ベース定義設定</a></li>
+            <li><a href="/app/manageled?menu=systemstatus">システムステータス</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+</form>
+<br>';
+
+if ($menuflag eq "view"){
+print '
+<form action="/app/manageled" method="post" name="settingform">
+<input type="hidden" name="menu" value="view">
+<input type="hidden" name="action" value="apply">
+<div class="callout primary">
+  <h2>表示設定</h2>
+
+<table class="unstriped">
+  <thead>
+    <tr>
+      <th width="100">Switch</th>
+      <th>コンテンツ</th>
+    </tr>
+  </thead>
+ <tbody>';
+&renderswitch("freeword-enable","フリーワード");
+&renderswitch("logo-enable","ロゴ");
+&renderswitch("clock-enable","時計");
+&renderswitch("anniverse-enable","記念日");
+&renderswitch("endtrans-enable","終電案内");
+&renderswitch("faceicon-enable","フェイスアイコン");
+&renderswitch("tokoyami-enable","常闇カレンダー");
+&renderswitch("boueigun-enable","防衛軍カレンダー");
+
+print '  </tbody>
+</table>
+
+<br>
+<br>
+<a class="button expanded" href="javascript:settingform.submit()">設定</a>
+</div>
+</form>
+';
+}
+
+if ($menuflag eq "viewoption"){
+print '
+<form action="/app/manageled" method="post" name="settingform">
+<input type="hidden" name="menu" value="viewoption">
+<input type="hidden" name="action" value="apply">
+<div class="callout primary">
+  <h2>表示属性設定</h2>
+<table class="unstriped">
+  <thead>
+    <tr>
+      <th width="200">Title</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+ <tbody>';
+print "<tr><td>表示時間</td>";
+print "<td><select name=\"viewoption-contspeed\">";
+print "<option value=\"$setting{'viewoption-contspeed'}\" selected>$setting{'viewoption-contspeed'}秒</option>";
+print "<option value=\"0.5\">0.5秒</option>";
+print "<option value=\"2\">2秒</option>";
+print "<option value=\"5\">5秒</option>";
+print "<option value=\"10\">10秒</option>";
+print "<option value=\"20\">20秒</option>";
+print "<option value=\"30\">30秒</option>";
+print "<option value=\"60\">60秒</option>";
+print "<option value=\"120\">120秒</option>";
+print "</select></td></tr>";
+print "<tr><td>切替時間</td>";
+print "<td><select name=\"viewoption-wipespeed\">";
+print "<option value=\"$setting{'viewoption-wipespeed'}\" selected>$setting{'viewoption-wipespeed'}秒</option>";
+print "<option value=\"0.5\">0.5秒</option>";
+print "<option value=\"1\">1秒</option>";
+print "<option value=\"2\">2秒</option>";
+print "<option value=\"5\">5秒</option>";
+print "<option value=\"10\">10秒</option>";
+print "</select></td></tr>";
+print "<tr><td>切替効果</td>";
+print "<td><select name=\"viewoption-wipeselect\">";
+print "<option value=\"$setting{'viewoption-wipeselect'}\" selected>$setting{'viewoption-wipeselect'}</option>";
+print "<option value=\"random\">ランダム</option>";
+print "<option value=\"randomfade\">ランダムフェード</option>";
+print "<option value=\"crossfade\">クロスフェード</option>";
+print "<option value=\"tile\">タイルフェード</option>";
+print "<option value=\"tinytile\">タイル</option>";
+print "<option value=\"slide\">水平スライド</option>";
+print "<option value=\"slideh\">垂直スライド</option>";
+print "<tr><td>背景効果速度</td>";
+print "<td><select name=\"viewoption-bgmorfspeed\">";
+print "<option value=\"$setting{'viewoption-bgmorfspeed'}\" selected>1/$setting{'viewoption-bgmorfspeed'}</option>";
+print "<option value=\"0\">最高速</option>";
+print "<option value=\"1\">1/1</option>";
+print "<option value=\"2\">1/2</option>";
+print "<option value=\"3\">1/3</option>";
+print "<option value=\"5\">1/5</option>";
+print "<option value=\"10\">1/10</option>";
+print "</select></td></tr>";
+print "<tr><td>背景効果</td>";
+print "<td><select name=\"viewoption-bgmorftype\">";
+print "<option value=\"$setting{'viewoption-bgmorftype'}\" selected>$setting{'viewoption-bgmorftype'}</option>";
+print "<option value=\"random\">ランダム</option>";
+print "<option value=\"exp\">拡大縮小</option>";
+print "<option value=\"move\">移動</option>";
+print "<option value=\"off\">効果OFF</option>";
+print "</select></td></tr>";
+print "<tr><td>背景効果ウエイト</td>";
+print "<td><select name=\"viewoption-bgmorfwait\">";
+print "<option value=\"$setting{'viewoption-bgmorfwait'}\" selected>$setting{'viewoption-bgmorfwait'}</option>";
+print "<option value=\"0\">ウエイト無し</option>";
+print "<option value=\"1\">1</option>";
+print "<option value=\"2\">2</option>";
+print "<option value=\"3\">3</option>";
+print "<option value=\"5\">5</option>";
+print "<option value=\"10\">10</option>";
+print "</select></td></tr>";
+print "<tr><td>スクロール速度</td>";
+print "<td><select name=\"viewoption-scrollspeed\">";
+print "<option value=\"$setting{'viewoption-scrollspeed'}\" selected>$setting{'viewoption-scrollspeed'}秒</option>";
+print "<option value=\"0.001\">0.001秒</option>";
+print "<option value=\"0.003\">0.003秒</option>";
+print "<option value=\"0.005\">0.005秒</option>";
+print "<option value=\"0.007\">0.007秒</option>";
+print "<option value=\"0.01\">0.01秒</option>";
+print "<option value=\"0.015\">0.015秒</option>";
+print "<option value=\"0.02\">0.02秒</option>";
+print "<option value=\"0.03\">0.03秒</option>";
+print "</select></td></tr>";
+print "<tr><td>差込情報優先度</td>";
+print "<td><select name=\"viewoption-intpriority\">";
+print "<option value=\"$setting{'viewoption-intpriority'}\" selected>$setting{'viewoption-intpriority'}</option>";
+print "<option value=\"veryhigh\">最高</option>";
+print "<option value=\"high\">高</option>";
+print "<option value=\"middle\">中</option>";
+print "<option value=\"low\">低</option>";
+print "<option value=\"verylow\">最低</option>";
+print "</select></td></tr>";
+print "<tr><td>フォント</td>";
+print "<td><select name=\"viewoption-fontselect\">";
+
+&loadfont;
+ foreach $fontlistline (@fontlistarray){
+  ($title,$value) = split(/\t/,$fontlistline);
+  $title =~ s/[[:cntrl:]]//g;
+  $value =~ s/[[:cntrl:]]//g;
+  if ($title eq ""){next;}
+  if ($setting{'viewoption-fontselect'} eq $title){
+   print "<option value=\"$title\" selected>$value</option>";
+  }
+  else{
+   print "<option value=\"$title\">$value</option>";
+  }
+ }
+print "</select></td></tr>";
+print '  </tbody>
+</table>
+<br>
+<br>
+<a class="button expanded" href="javascript:settingform.submit()">設定</a>
+</div>
+</form>
+';
+}
+
+if ($menuflag eq "ledoption"){
+print '
+<form action="/app/manageled" method="post" name="settingform">
+<input type="hidden" name="menu" value="ledoption">
+<input type="hidden" name="action" value="apply">
+<div class="callout primary">
+  <h2>LEDパネル設定</h2>
+  <p>サービスマン以外は、設定を変更しないでください、ハードウェアを壊す可能性があります</p>
+<table class="unstriped">
+  <thead>
+    <tr>
+      <th width="250">Title</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+ <tbody>';
+print "<tr><td>hw-mapping</td>";
+print "<td><input type=\"text\" name=\"ledoption-hardwaremapping\" value=\"$setting{'ledoption-hardwaremapping'}\"></td></tr>";
+print "<tr><td>rgb-sequence</td>";
+print "<td><input type=\"text\" name=\"ledoption-rgbsequence\" value=\"$setting{'ledoption-rgbsequence'}\"></td></tr>";
+print "<tr><td>rows</td>";
+print "<td><input type=\"text\" name=\"ledoption-rows\" value=\"$setting{'ledoption-rows'}\"></td></tr>";
+print "<tr><td>chain-length</td>";
+print "<td><input type=\"text\" name=\"ledoption-chainlength\" value=\"$setting{'ledoption-chainlength'}\"></td></tr>";
+print "<tr><td>parallel</td>";
+print "<td><input type=\"text\" name=\"ledoption-parallel\" value=\"$setting{'ledoption-parallel'}\"></td></tr>";
+print "<tr><td>pwm-bits</td>";
+print "<td><input type=\"text\" name=\"ledoption-pwmbits\" value=\"$setting{'ledoption-pwmbits'}\"></td></tr>";
+print "<tr><td>brightness</td>";
+print "<td><input type=\"text\" name=\"ledoption-brightness\" value=\"$setting{'ledoption-brightness'}\"></td></tr>";
+print "<tr><td>pwm-lsb-nanoseconds</td>";
+print "<td><input type=\"text\" name=\"ledoption-pwmlsbnanoseconds\" value=\"$setting{'ledoption-pwmlsbnanoseconds'}\"></td></tr>";
+print "<tr><td>slowdown-gpio</td>";
+print "<td><input type=\"text\" name=\"ledoption-slowdowngpio\" value=\"$setting{'ledoption-slowdowngpio'}\"></td></tr>";
+print '  </tbody>
+</table>
+<br>
+<br>
+<a class="button expanded" href="javascript:settingform.submit()">設定</a>
+</div>
+</form>
+';
+}
+
+if ($menuflag eq "freeword"){
+print '
+<form action="/app/manageled" method="post" name="settingform">
+<input type="hidden" name="menu" value="freeword">
+<input type="hidden" name="action" value="apply">
+<div class="callout primary">
+  <h2>フリーワード設定</h2>
+<table class="unstriped">
+  <thead>
+    <tr>
+      <th width="100">Switch</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+ <tbody>';
+&loadcolor;
+for $i (1..9){
+ $settingpointer = "freeword-$i"."value";
+ $switchpointer = "freeword-$i"."enable";
+ $colorpointer = "freeword-$i"."color";
+ $bgcolorpointer = "freeword-$i"."bgcolor";
+ $shadowpointer = "freeword-$i"."shadow";
+ print "<tr><td>";
+ &renderswitchsub($switchpointer);
+ print "</td><td><table border=0 cellpadding=0><tr><td colspan=4><input type=\"text\" name=\"$settingpointer\" value=\"$setting{$settingpointer}\" maxlength=100></td></tr>";
+
+ print "<tr><td align=\"right\">文字色：</td><td><select name=\"$colorpointer\">";
+
+ foreach $colorlistline (@colorlistarray){
+  ($code,$title) = split(/\t/,$colorlistline);
+  $title =~ s/[[:cntrl:]]//g;
+  $code =~ s/[[:cntrl:]]//g;
+  if ($title eq ""){next;}
+  if ($setting{$colorpointer} eq $code){
+   print "<option value=\"$code\" selected>$title</option>";
+  }
+  else{
+   print "<option value=\"$code\">$title</option>";
+  }
+ }
+ print "</select></td><td align=\"right\">シャドー：</td><td>";
+ &renderswitchsub($shadowpointer);
+
+ print "</td></tr>";
+
+ print "<tr><td align=\"right\">背景色：</td><td><select name=\"$bgcolorpointer\">";
+
+ foreach $colorlistline (@colorlistarray){
+  ($code,$title) = split(/\t/,$colorlistline);
+  $title =~ s/[[:cntrl:]]//g;
+  $code =~ s/[[:cntrl:]]//g;
+  if ($title eq ""){next;}
+  if ($setting{$bgcolorpointer} eq $code){
+   print "<option value=\"$code\" selected>$title</option>";
+  }
+  else{
+   print "<option value=\"$code\">$title</option>";
+  }
+ }
+ print "</select></td><td></td><td></td></tr>";
+ print "</table></td></tr>";
+
+}
+print '  </tbody>
+</table>
+<br>
+<br>
+<a class="button expanded" href="javascript:settingform.submit()">設定</a>
+</div>
+</form>
+';
+}
+
+if ($menuflag eq "logo"){
+print '
+<form action="/app/manageled" method="post" name="settingform">
+<input type="hidden" name="menu" value="logo">
+<input type="hidden" name="action" value="apply">
+<div class="callout primary">
+  <h2>ロゴ設定</h2>
+<table class="unstriped">
+  <thead>
+    <tr>
+      <th width="100">Switch</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+ <tbody>';
+&renderswitch("logo-bgmorf","背景合成");
+print "<tr><td>合成手法</td>";
+&loadcomp;
+print "<td><select name=\"logo-bgmorftype\">";
+foreach $complistline (@complistarray){
+ ($code,$title) = split(/\t/,$complistline);
+ $title =~ s/[[:cntrl:]]//g;
+ $code =~ s/[[:cntrl:]]//g;
+ if ($title eq ""){next;}
+ if ($setting{'logo-bgmorftype'} eq $code){
+  print "<option value=\"$code\" selected>$title</option>";
+ }
+ else{
+  print "<option value=\"$code\">$title</option>";
+ }
+}
+print "</select></td></tr>";
+
+open (FILE,$uploadfile);
+(@filearray) = (<FILE>);
+close (FILE);
+for $i (1..9){
+ $settingpointer = "logo-$i"."filename";
+ $settingvalue = "logo-$i"."value";
+ $switchpointer = "logo-$i"."enable";
+ $switchvalue = "<select name=\"$settingpointer\">";
+ $switchvalue .= "<option value=\"$setting{$settingpointer}--_--$setting{$settingvalue}\" selected>$setting{$settingvalue}</option>";
+ foreach $fileline (@filearray){
+  ($filename,$filetempname,$filedate,$filecomment,$fileflag,$temp) = split(/\t/,$fileline);
+  $switchvalue .= "<option value=\"$filetempname--_--$filecomment\">$filecomment</option>";
+ }
+$switchvalue .= "</select>";
+ &renderswitch($switchpointer,$switchvalue);
+}
+print '  </tbody>
+</table>
+<br>
+<br>
+<a class="button expanded" href="javascript:settingform.submit()">設定</a>
+</div>
+</form>
+';
+}
+
+if ($menuflag eq "clock"){
+print '
+<form action="/app/manageled" method="post" name="settingform">
+<input type="hidden" name="menu" value="clock">
+<input type="hidden" name="action" value="apply">
+<div class="callout primary">
+  <h2>時計設定</h2>
+<table class="unstriped">
+  <thead>
+    <tr>
+      <th width="100">Switch</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+ <tbody>';
+&renderswitch("clock-bgmorf","背景合成");
+print "<tr><td>合成手法</td>";
+&loadcomp;
+print "<td><select name=\"clock-bgmorftype\">";
+foreach $complistline (@complistarray){
+ ($code,$title) = split(/\t/,$complistline);
+ $title =~ s/[[:cntrl:]]//g;
+ $code =~ s/[[:cntrl:]]//g;
+ if ($title eq ""){next;}
+ if ($setting{'clock-bgmorftype'} eq $code){
+  print "<option value=\"$code\" selected>$title</option>";
+ }
+ else{
+  print "<option value=\"$code\">$title</option>";
+ }
+}
+print "</select></td></tr>";
+print '  </tbody>
+</table>
+<br>
+<br>
+<a class="button expanded" href="javascript:settingform.submit()">設定</a>
+</div>
+</form>
+';
+}
+
+
+if ($menuflag eq "remote"){
+print '
+<form action="/app/manageled" method="post" name="settingform">
+<input type="hidden" name="menu" value="remote">
+<input type="hidden" name="action" value="apply">
+<div class="callout primary">
+  <h2>リモコン設定</h2>
+
+<table class="unstriped">
+  <thead>
+    <tr>
+      <th width="100">Switch</th>
+      <th>コンテンツ</th>
+    </tr>
+  </thead>
+ <tbody>';
+&renderswitch("remote-enable","リモコンを使用する");
+print '  </tbody>
+</table>
+
+<br>
+<br>
+<a class="button expanded" href="javascript:settingform.submit()">設定</a>
+</div>
+</form>
+';
+}
+
+if ($menuflag eq "endtrans"){
+$footerdisableflag = 1;
+print '
+<form action="/app/manageled" method="post" name="settingform">
+<input type="hidden" name="menu" value="endtrans">
+<input type="hidden" name="action" value="apply">
+<div class="callout primary">
+  <h2>終電設定</h2>
+<p>駅名は、全角で５文字までです</p>
+<p>開始時刻以降、表示を開始、及び優先表示します</p>';
+print "<h4>一般設定</h4>";
+print '<table class="unstriped"><thead><tr><th width="200">Title</th><th>時刻</th></tr></thead><tbody>';
+print "<tr><td>開始時刻</td>";
+print "<td><input class=\"input-group-field\" type=\"text\" id=\"endtrans-starttime\" name=\"endtrans-starttime\"";
+if ($setting{'endtrans-starttime'} ne ""){print " value=\"$setting{'endtrans-starttime'}\"";}
+print '></td></tr>';
+print '  </tbody></table>';
+
+@endtransarray = ("h","d","k");
+foreach $j (@endtransarray){
+ if ($j eq "h"){print "<h4>平日</h4>";}
+ if ($j eq "d"){print "<h4>土曜日</h4>";}
+ if ($j eq "k"){print "<h4>休日</h4>";}
+ print '<table class="unstriped"><thead><tr><th width="200">駅名</th><th>時刻</th></tr></thead><tbody>';
+
+ for $i (1..9){
+  $settingtitle = "endtrans-$j$i"."title";
+  $settingvalue = "endtrans-$j$i"."value";
+  print "<tr><td><input type=\"text\" name=\"$settingtitle\" value=\"$setting{$settingtitle}\" maxlength=10></td>";
+  print "<td><input class=\"input-group-field\" type=\"text\" id=\"$settingvalue\" name=\"$settingvalue\"";
+  if ($setting{$settingvalue} ne ""){print " value=\"$setting{$settingvalue}\"";}
+  print '></td></tr>';
+ }
+ print '  </tbody></table>';
+}
+
+print '
+<br>
+<br>
+<a class="button expanded" href="javascript:settingform.submit()">設定</a>
+</div>
+</form>
+';
+}
+
+if ($menuflag eq "anniverse"){
+$footerdisableflag = 1;
+print '
+<form action="/app/manageled" method="post" name="settingform">
+<input type="hidden" name="menu" value="anniverse">
+<input type="hidden" name="action" value="apply">
+<div class="callout primary">
+  <h2>記念日設定</h2>
+<table class="unstriped">
+  <thead>
+    <tr>
+      <th width="100">Switch</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+ <tbody>';
+&renderswitch("anniverse-bgmorf","背景合成");
+print "<tr><td>合成手法</td>";
+&loadcomp;
+print "<td><select name=\"anniverse-bgmorftype\">";
+foreach $complistline (@complistarray){
+ ($code,$title) = split(/\t/,$complistline);
+ $title =~ s/[[:cntrl:]]//g;
+ $code =~ s/[[:cntrl:]]//g;
+ if ($title eq ""){next;}
+ if ($setting{'anniverse-bgmorftype'} eq $code){
+  print "<option value=\"$code\" selected>$title</option>";
+ }
+ else{
+  print "<option value=\"$code\">$title</option>";
+ }
+}
+print "</select></td></tr>";
+
+open (FILE,$uploadfile);
+(@filearray) = (<FILE>);
+close (FILE);
+&loadweek;
+push (@weeklistarray,"\tOFF");
+for $i (1..9){
+ $settingpointer = "anniverse-$i"."filename";
+ $settingvalue = "anniverse-$i"."value";
+ $switchpointer = "anniverse-$i"."enable";
+ $daypointer = "anniverse-$i"."day";
+ $weekpointer = "anniverse-$i"."week";
+ print "<tr><td>";
+ &renderswitchsub($switchpointer);
+ print "</td><td><table border=0 cellpadding=0><tr><td colspan=4>";
+ print "<select name=\"$settingpointer\">";
+ print "<option value=\"$setting{$settingpointer}--_--$setting{$settingvalue}\" selected>$setting{$settingvalue}</option>";
+ foreach $fileline (@filearray){
+  ($filename,$filetempname,$filedate,$filecomment,$fileflag,$temp) = split(/\t/,$fileline);
+  print "<option value=\"$filetempname--_--$filecomment\">$filecomment</option>";
+ }
+ print "</select></td></tr>";
+ print "<tr><td align=\"right\">日付指定：</td><td><select name=\"$daypointer\">";
+ if ($setting{$daypointer} eq ""){
+  print "<option value=\"\" selected>OFF</option>";
+ }
+ else{
+  print "<option value=\"$setting{$daypointer}\" selected>$setting{$daypointer} 日</option>";
+  print "<option value=\"\">OFF</option>";
+ }
+ for $dayline (1..31){
+  print "<option value=\"$dayline\">$dayline 日</option>";
+ }
+ print "</select></td><td align=\"right\">曜日指定：</td><td><select name=\"$weekpointer\">";
+
+ foreach $weeklistline (@weeklistarray){
+  ($code,$title) = split(/\t/,$weeklistline);
+  $title =~ s/[[:cntrl:]]//g;
+  $code =~ s/[[:cntrl:]]//g;
+  if ($title eq ""){next;}
+  if ($setting{$weekpointer} eq $code){
+   print "<option value=\"$code\" selected>$title</option>";
+  }
+  else{
+   print "<option value=\"$code\">$title</option>";
+  }
+ }
+ print "</select></td></tr>";
+ print "</table></td></tr>";
+}
+print '  </tbody>
+</table>
+<br>
+<br>
+<a class="button expanded" href="javascript:settingform.submit()">設定</a>
+</div>
+</form>
+';
+}
+
+if ($menuflag eq "faceicon"){
+print '
+<form action="/app/manageled" method="post" name="settingform">
+<input type="hidden" name="menu" value="faceicon">
+<input type="hidden" name="action" value="apply">
+<div class="callout primary">
+  <h2>フェイスアイコン設定</h2>
+  <h4>リスト選択設定</h4>
+
+<table class="unstriped">
+  <thead>
+    <tr>
+      <th width="100">Switch</th>
+      <th>コンテンツ</th>
+    </tr>
+  </thead>
+ <tbody>';
+&renderswitch("faceicon-listenable","フェイスアイコンリストを有効化");
+&renderswitch("faceicon-pukuenable","ランダムプクリポフェイスを有効化");
+&renderswitch("faceicon-dwaenable","ランダムドワーフフェイスを有効化");
+print '  </tbody>
+</table>
+
+  <h4>フェイスアイコンリスト設定</h4>
+  <p>アイコン変更は、フェイスアイコンを選択してください</p>
+<table class="unstriped">
+  <thead>
+    <tr>
+      <th width="70">Icon</th>
+      <th width="100">Switch</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+ <tbody>';
+for $i (1..49){
+ $iconpointer = "faceicon-list$i"."icon";
+ $namepointer = "faceicon-list$i"."name";
+ $switchpointer = "faceicon-list$i"."enable";
+ print "<tr><td>";
+ if ($setting{$iconpointer} eq ""){
+  $setting{$iconpointer} = 14235;
+ }
+ print '<a href="/app/manageled?s='.$setting{$iconpointer}.'&id='.$i.'"><img src="' . $imagedir . $setting{$iconpointer} . '.png" width=64 height=64 border=0></a></td>' . "\n";
+ print "</td>";
+ print "<td><div class=\"switch small\"><input class=\"switch-input\" id=\"$switchpointer\" value=\"on\" type=\"checkbox\" name=\"$switchpointer\"";
+ if ($setting{$switchpointer} eq "on"){print " checked";}
+ print "><label class=\"switch-paddle\" for=\"$switchpointer\"><span class=\"switch-active\" aria-hidden=\"true\">On</span><span class=\"switch-inactive\" aria-hidden=\"true\">Off</span></label></div>";
+ print "</td>\n";
+ print "<td><input type=\"text\" name=\"$namepointer\" value=\"$setting{$namepointer}\" maxlength=6></td></tr>";
+
+}
+print '  </tbody>
+</table>
+<br>
+<br>
+<a class="button expanded" href="javascript:settingform.submit()">設定</a>
+</div>
+</form>
+';
+}
+
+if ($menuflag eq "filemanage"){
+print '
+<div class="callout warning">
+  <h2>ファイル管理設定</h2>';
+print "<h4>ファイルアップロード</h4>\n";
+print "<p>別途指定のファイルフォーマットを遵守して下さい</p>\n";
+print '<div id="drag-and-drop-area" class="drag-and-drop-area drag-and-drop-area-out">
+<span>
+<i class="fa fa-file"></i>ファイルアップロード</span>
+</div>';
+print '</div>';
+print '
+<form action="/app/manageled" method="post" name="settingform">
+<input type="hidden" name="menu" value="filemanage">
+<input type="hidden" name="action" value="apply">
+<div class="callout primary">
+  <h4>ファイル管理</h4>
+  <p>スイッチをON/Valueにコメントを設定することで、一覧に表示されます</p>
+<table class="unstriped">
+  <thead>
+    <tr>
+      <th width="200">thumbnail</th>
+      <th width="100">Switch</th>
+      <th width="200">date</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+ <tbody>';
+open (FILE,$uploadfile);
+(@filearray) = (<FILE>);
+close (FILE);
+
+foreach $fileline (@filearray){
+ ($filename,$filetempname,$filedate,$filecomment,$fileflag,$temp) = split(/\t/,$fileline);
+ print "<tr><td>";
+ print '<img src="' . $uploaddir . $filetempname . '" border=0></a></td>' . "\n";
+ print "</td>";
+ print "<td><div class=\"switch small\"><input class=\"switch-input\" id=\"fswitch_____$filetempname\" value=\"on\" type=\"checkbox\" name=\"fswitch_____$filetempname\"";
+ if ($fileflag ne "d"){print " checked";}
+ print "><label class=\"switch-paddle\" for=\"fswitch_____$filetempname\"><span class=\"switch-active\" aria-hidden=\"true\">On</span><span class=\"switch-inactive\" aria-hidden=\"true\">Off</span></label></div>";
+ print "</td>\n";
+ print "<td>$filedate</td>";
+ print "<td><input type=\"text\" name=\"fcomment_____$filetempname\" value=\"$filecomment\" maxlength=20></td></tr>";
+
+}
+print '  </tbody>
+</table>
+<br>
+<br>
+<a class="button expanded" href="javascript:settingform.submit()">設定</a>
+</div>
+</form>
+';
+}
+
+if ($menuflag eq "base"){
+print '
+<form action="/app/manageled" method="post" name="settingform">
+<input type="hidden" name="menu" value="base">
+<input type="hidden" name="action" value="apply">
+<div class="callout primary">
+  <h2>ベース定義設定</h2>
+  <p>各種定義ディレクトリ/ファイル設定</p>
+  <p><b>初期設定時以外は、弄らないで下さい！、エラーが発生します！</b></p>
+<table class="unstriped">
+  <thead>
+    <tr>
+      <th width="200">Title</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+ <tbody>';
+print "<tr><td>configfile</td>";
+print "<td>ledtoolkit.py [ manageconfigfile ] hardcode.</td></tr>";
+print "<tr><td>fontdir</td>";
+print "<td><input type=\"text\" name=\"base-fontdir\" value=\"$setting{'base-fontdir'}\" maxlength=300></td></tr>";
+print "<tr><td>imagedir</td>";
+print "<td><input type=\"text\" name=\"base-imagedir\" value=\"$setting{'base-imagedir'}\" maxlength=300></td></tr>";
+print "<tr><td>uploaddir</td>";
+print "<td><input type=\"text\" name=\"base-uploaddir\" value=\"$setting{'base-uploaddir'}\" maxlength=300></td></tr>";
+print "<tr><td>mosaicdir</td>";
+print "<td><input type=\"text\" name=\"base-mosaicdir\" value=\"$setting{'base-mosaicdir'}\" maxlength=300></td></tr>";
+print "<tr><td>icondir</td>";
+print "<td><input type=\"text\" name=\"base-icondir\" value=\"$setting{'base-icondir'}\" maxlength=300></td></tr>";
+print "<tr><td>irdir</td>";
+print "<td><input type=\"text\" name=\"base-irdir\" value=\"$setting{'base-irdir'}\" maxlength=300></td></tr>";
+print "<tr><td>resourcedir</td>";
+print "<td><input type=\"text\" name=\"base-resourcedir\" value=\"$setting{'base-resourcedir'}\" maxlength=300></td></tr>";
+print "<tr><td>boueigunresourcedir</td>";
+print "<td><input type=\"text\" name=\"base-boueigunresourcedir\" value=\"$setting{'base-boueigunresourcedir'}\" maxlength=300></td></tr>";
+print "<tr><td>tokoyamiresourcedir</td>";
+print "<td><input type=\"text\" name=\"base-tokoyamiresourcedir\" value=\"$setting{'base-tokoyamiresourcedir'}\" maxlength=300></td></tr>";
+print "<tr><td>pukulistfile</td>";
+print "<td><input type=\"text\" name=\"base-pukulistfile\" value=\"$setting{'base-pukulistfile'}\" maxlength=300></td></tr>";
+print "<tr><td>dwalistfile</td>";
+print "<td><input type=\"text\" name=\"base-dwalistfile\" value=\"$setting{'base-dwalistfile'}\" maxlength=300></td></tr>";
+print '  </tbody>
+</table>
+<p>manageled 定義済変数</p>
+<table class="unstriped">
+  <thead>
+    <tr>
+      <th width="200">Title</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+ <tbody>';
+print "<tr><td>imgdb</td><td>$imgdb</td></tr>";
+print "<tr><td>imagedir</td><td>$imagedir</td></tr>";
+print "<tr><td>setupfile</td><td>$setupfile</td></tr>";
+print "<tr><td>fontlistfile</td><td>$fontlistfile</td></tr>";
+print "<tr><td>colorlistfile</td><td>$colorlistfile</td></tr>";
+print "<tr><td>weeklistfile</td><td>$weeklistfile</td></tr>";
+print "<tr><td>complistfile</td><td>$complistfile</td></tr>";
+print "<tr><td>uploadfile</td><td>$uploadfile</td></tr>";
+print "<tr><td>uploaddir</td><td>$uploaddir</td></tr>";
+print "<tr><td>listarraycount</td><td>$listarraycount</td></tr>";
+print '  </tbody>
+</table>
+
+
+<br>
+<br>
+<a class="button expanded" href="javascript:settingform.submit()">設定</a>
+</div>
+</form>
+';
+}
+
+
+if ($menuflag eq "systemstatus"){
+print '
+<div class="callout success">
+  <h2>システムステータス</h2>';
+print "<h4>バージョン情報</h4>\n<blockquote><pre>";
+$systemcommand = "cat /etc/os-release";
+(@systemresult) = `$systemcommand`;
+foreach $systemresultline (@systemresult){
+ print $systemresultline;
+}
+print "</pre></blockquote><h4>filesystem</h4><blockquote><pre>";
+$systemcommand = "df";
+(@systemresult) = `$systemcommand`;
+foreach $systemresultline (@systemresult){
+ print $systemresultline;
+}
+print "</pre></blockquote><h4>top</h4><blockquote><pre>";
+$systemcommand = "top -b -n 1 -w 180";
+(@systemresult) = `$systemcommand`;
+foreach $systemresultline (@systemresult){
+ print $systemresultline . "";
+}
+
+print '</pre></blockquote></div>
+</form>
+';
+}
+
+
+if ($iflag == 1){
+print '<div class="callout success">
+  <h2>Manage LED</h2>
+  <p>LEDパネルの設定を行うことが出来ます</p>
+  「設定」より、設定項目を選んでください<br><br>
+  <a href="https://twitter.com/eucalydqx">ゆうかり＠dqx</a> が 適当に 作った！
+</div>';
+}
+
+if ($faceviewflag eq "1"){
+
+ $namepointer = "faceicon-list$FORM{'id'}"."name";
+ $iconname = $setting{$namepointer};
+ $iconid = $FORM{'id'};
+print "<div class=\"callout success\">
+  <h4>id:$iconid お名前:$iconname</h4>";
+print '<table><tr><td valign=center><img src="' . $imagedir . $imagearray[0] . '.png" width=64 height=64 border=0></td>' . "\n";
+print "<td valign=center><a class=\"button\" href=\"/app/manageled?menu=faceiconsub&action=apply&icon=$imagearray[0]&id=$FORM{'id'}\">このアイコンを設定</a></td>";
+print "<td valign=center><a class=\"button\" href=\"/app/manageled?r=on&id=$FORM{'id'}\">アイコンをシャッフル</a></td></tr></table>";
+print "</div>";
+
+
+ print '<div class="grid-x grid-padding-x small-up-5 medium-up-8 large-up-16 small-centered medium-centered large-centered">
+';
+ foreach $imageline (@imagearray){
+  print '<div class="cell text-center"><a href="/app/manageled?s='.$imageline.'&id='.$FORM{'id'}.'"><img src="' . $imagedir . $imageline . '.png" width=64 height=64 border=0></a><br><br></div>' . "\n";
+ }
+ print '</div><br><br>';
+}
+if ($footerdisableflag ne "1"){
+ print '<br><br><div class="row footer">
+  <div class="small-12 columns"><blockquote>By <a href="https://twitter.com/eucalydqx">eucalyptus.</a> 2018<cite>(C)2017 ARMOR PROJECT/BIRD STUDIO/SQUARE ENIX All Rights Reserved. (C)SUGIYAMA KOBO (P)SUGIYAMA KOBO</cite></blockquote></div>
+</div>';
+}
+print '
+    <script src="/js/vendor/jquery.js"></script>
+    <script src="/js/vendor/what-input.js"></script>
+    <script src="/js/vendor/foundation.js"></script>
+    <script src="/js/app.js"></script>
+    <script type="text/javascript" src="/js/timepicki.js"></script>
+    <script src="/js/dropzone.js"></script>
+<script>
+';
+print "\$(\"#endtrans-starttime\").timepicki({show_meridian:false,min_hour_value:0,max_hour_value:23,step_size_minutes:1,overflow_minutes:true,disable_keyboard_mobile: true});\n";
+@endtransarray = ("h","d","k");
+foreach $j (@endtransarray){
+ for $i (1..9){
+  $settingvalue = "endtrans-$j$i"."value";
+  print "\$(\"#".$settingvalue."\").timepicki({show_meridian:false,min_hour_value:0,max_hour_value:23,step_size_minutes:1,overflow_minutes:true,disable_keyboard_mobile: true});\n";
+ }
+}
+print '</script>
+    <script>
+        $(function(){
+            Dropzone.autoDiscover = false;
+            Dropzone.options.myAwesomeDropzone = {
+                paramName : "datafile",
+                parallelUploads:1,
+                acceptedFiles:"image/png",
+                maxFiles:1,
+                maxFilesize:0.5,
+                createImageThumbnails:false,
+                dictFileTooBig: "File so big.less than 500KB.",
+                dictInvalidFileType: "Not a image file.",
+                dictMaxFilesExceeded: "Do not accept multiple-file.",
+            };
+            var myDropzone = new Dropzone("div#drag-and-drop-area",{url:"/app/upload"});
+            myDropzone.on("complete", function () {
+                location.reload();
+            });
+        });
+    </script>
+
+  </body>
+</html>';
+
+exit;
+
+sub filemanagesub{
+ open (FILE,$uploadfile);
+ (@filearray) = (<FILE>);
+ close (FILE);
+ undef (@newfilearray);
+ $filesaveflag = 0;
+ foreach $fileline (@filearray){
+  ($filename,$filetempname,$filedate,$filecomment,$fileflag,$temp) = split(/\t/,$fileline);
+  $fileswitchpointer = "fswitch_____$filetempname";
+  $filecommentpointer = "fcomment_____$filetempname";
+  $newfileflag = "";
+  $newfilecomment = "";
+  $newfilereplaceflag = 0;
+  if ($FORM{$fileswitchpointer} !~ /on/){
+   $newfileflag .= "d";
+   $newfilereplaceflag = 1;
+  }
+  if ($FORM{$filecommentpointer} ne ""){
+   $newfilecomment .= $FORM{$filecommentpointer};
+   $newfilereplaceflag = 1;
+  }
+  if ($newfilereplaceflag == 1){
+   $newfileline = "$filename\t$filetempname\t$filedate\t$newfilecomment\t$newfileflag\t\t\n";
+   push(@newfilearray,$newfileline);
+   $filesaveflag = 1;
+  }
+  else {
+   push(@newfilearray,$fileline);
+  }
+ }
+ if ($filesaveflag == 1){
+  open (FILEOUTPUT,">$uploadfile");
+  foreach $newfileline (@newfilearray){
+   print FILEOUTPUT $newfileline;
+  }
+  close (FILEOUTPUT);
+ }
+}
+
+sub loadsetup {
+ open (FILE,$setupfile);
+ (@setuparray) = (<FILE>);
+ close (FILE);
+
+ undef (%setting);
+ 
+ foreach $setupline (@setuparray){
+  ($title,$value) = split(/\t/,$setupline);
+  if ($title eq ""){next;}
+  $title =~ s/[[:cntrl:]]//g;
+  $value =~ s/[[:cntrl:]]//g;
+  $setting{$title} = $value;
+ }
+}
+
+sub savesetup {
+ foreach $savedata (@savevalue){
+  $setting{$savedata} = $FORM{$savedata};
+ }
+ open (OUTFILE,">$setupfile");
+ foreach(sort keys %setting) {
+  $settingtitle=$_;
+  $settingvalue=$setting{$settingtitle};
+  $settingtitle =~ s/[[:cntrl:]]//g;
+  $settingvalue =~ s/[[:cntrl:]]//g;
+  if ($settingtitle !~ /\w/){next;}
+  print OUTFILE "$settingtitle\t$settingvalue\n";
+ }
+ close (OUTFILE);
+}
+
+sub renderswitch {
+ ($switchdata,$switchvalue) = (@_);
+ print "<tr><td><div class=\"switch small\"><input class=\"switch-input\" id=\"$switchdata\" value=\"on\" type=\"checkbox\" name=\"$switchdata\"";
+ if ($setting{$switchdata} eq "on"){print " checked";}
+ print "><label class=\"switch-paddle\" for=\"$switchdata\"><span class=\"switch-active\" aria-hidden=\"true\">On</span><span class=\"switch-inactive\" aria-hidden=\"true\">Off</span></label></div>";
+ print "</td><td>$switchvalue</td></tr>\n";
+}
+
+sub renderswitchsub {
+ ($switchdata) = (@_);
+ print "<div class=\"switch small\"><input class=\"switch-input\" id=\"$switchdata\" value=\"on\" type=\"checkbox\" name=\"$switchdata\"";
+ if ($setting{$switchdata} eq "on"){print " checked";}
+ print "><label class=\"switch-paddle\" for=\"$switchdata\"><span class=\"switch-active\" aria-hidden=\"true\">On</span><span class=\"switch-inactive\" aria-hidden=\"true\">Off</span></label></div>";
+}
+
+
+sub loadfont {
+ open (FILE,$fontlistfile);
+ (@fontlistarray) = (<FILE>);
+ close (FILE);
+}
+
+sub loadcolor {
+ open (FILE,$colorlistfile);
+ (@colorlistarray) = (<FILE>);
+ close (FILE);
+}
+
+sub loadweek {
+ open (FILE,$weeklistfile);
+ (@weeklistarray) = (<FILE>);
+ close (FILE);
+}
+
+sub loadcomp {
+ open (FILE,$complistfile);
+ (@complistarray) = (<FILE>);
+ close (FILE);
+}
