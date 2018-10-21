@@ -1,7 +1,7 @@
 #!/bin/sh
 
 mkdir /data
-mkdir /data/ledpabel
+mkdir /data/ledpanel
 mkdir /data/web
 mkdir /data/web/cgi
 mkdir /data/web/facedb
