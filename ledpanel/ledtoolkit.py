@@ -64,7 +64,7 @@ class ledtoolkit:
         configdata = self.getconfig("viewoption")
         self.fontlarge = ImageFont.truetype(self.fontdir + configdata["fontselect"], 32,encoding='unic')
         self.fontmedium = ImageFont.truetype(self.fontdir + configdata["fontselect"], 16,encoding='unic')
-        self.fontsmall  = ImageFont.truetype(self.fontdir + configdata["fontselect"], 8,encoding='unic')
+        self.fontsmall  = ImageFont.truetype(self.fontdir + configdata["fontsmallselect"], 8,encoding='unic')
 
     def fontrender(self,canvasdata,size,rows,cols,messagedata,color,option):
         ledcanvasdraw = ImageDraw.Draw(canvasdata)
