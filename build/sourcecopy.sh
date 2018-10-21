@@ -10,5 +10,5 @@ mkdir /data/web/root/imagerawdir
 mkdir /data/web/root/uploaddata
 mkdir /data/ledpanel/fonts
 mkdir /data/ledpanel/resource
-cp -rn ../ledpanel/ /data/ledpanel/
-cp -rn ../web/ /data/web/
+cp -rn ../ledpanel/ /data/
+cp -rn ../web/ /data/
