@@ -1,14 +1,14 @@
 #!/bin/sh
 
-mkdir /data
-mkdir /data/ledpanel
-mkdir /data/web
-mkdir /data/web/cgi
-mkdir /data/web/facedb
-mkdir /data/web/root
-mkdir /data/web/root/imagerawdir
-mkdir /data/web/root/uploaddata
-mkdir /data/ledpanel/fonts
-mkdir /data/ledpanel/resource
-cp -rn ../ledpanel/ /data/
-cp -rn ../web/ /data/
+mkdir -f /data
+mkdir -f /data/ledpanel
+mkdir -f /data/web
+mkdir -f /data/web/cgi
+mkdir -f /data/web/facedb
+mkdir -f /data/web/root
+mkdir -f /data/web/root/imagerawdir
+mkdir -f /data/web/root/uploaddata
+mkdir -f /data/ledpanel/fonts
+mkdir -f /data/ledpanel/resource
+cp -frn ../ledpanel/ /data/
+cp -frn ../web/ /data/

@@ -4,6 +4,7 @@
 import datetime,time
 
 class dqxcalender:
+    tokoyamipage = 0
 
     def boueigunrender(self,ledtoolkitobject):
         baseconfig = ledtoolkitobject.getbaseconfig()
@@ -68,21 +69,32 @@ class dqxcalender:
         tokod = (btime + 2) % 4 + 1
         tokom = (btime + 1) % 4 + 1
         tokosh = int((unixtime - 1524430800) / 86400 % 3) + 1
+        tokosh2 = int(tokosh + 2 % 3)
 
+        self.tokoyamipage = self.tokoyamipage + 1
+        if self.tokoyamipage == 2:
+            self.tokoyamipage = 0
 
         imagedata = ledtoolkitobject.imagenew()
-        filename = self.tokoyamiresourcedir + "0_" + str(tokor) + ".png"
-        imagetokor = ledtoolkitobject.imagefitload(filename,"v")
-        filename = self.tokoyamiresourcedir + "1_" + str(tokod) + ".png"
-        imagetokod = ledtoolkitobject.imagefitload(filename,"v")
-        filename = self.tokoyamiresourcedir + "2_" + str(tokom) + ".png"
-        imagetokom = ledtoolkitobject.imagefitload(filename,"v")
-        filename = self.tokoyamiresourcedir + "shugo/0_" + str(tokosh) + ".png"
-        imagetokosh = ledtoolkitobject.imagefitload(filename,"v")
-        imagedata.paste(imagetokor,(0,0))
-        imagedata.paste(imagetokod,(32,0))
-        imagedata.paste(imagetokom,(64,0))
-        imagedata.paste(imagetokosh,(96,0))
+        if self.tokoyamipage == 0:
+            filename = self.tokoyamiresourcedir + "0_" + str(tokor) + ".png"
+            imagetokor = ledtoolkitobject.imagefitload(filename,"v")
+            filename = self.tokoyamiresourcedir + "1_" + str(tokod) + ".png"
+            imagetokod = ledtoolkitobject.imagefitload(filename,"v")
+            filename = self.tokoyamiresourcedir + "2_" + str(tokom) + ".png"
+            imagetokom = ledtoolkitobject.imagefitload(filename,"v")
+            imagedata.paste(imagetokor,(16,0))
+            imagedata.paste(imagetokod,(48,0))
+            imagedata.paste(imagetokom,(80,0))
+
+        if self.tokoyamipage == 1:
+            filename = self.tokoyamiresourcedir + "shugo/0_" + str(tokosh) + ".png"
+            imagetokosh = ledtoolkitobject.imagefitload(filename,"v")
+            filename = self.tokoyamiresourcedir + "shugo/1_" + str(tokosh2) + ".png"
+            imagetokosh2 = ledtoolkitobject.imagefitload(filename,"v")
+            imagedata.paste(imagetokosh,(32,0))
+            imagedata.paste(imagetokosh2,(64,0))
+
         return (imagedata)
 
     def boueigunname(self,i):
