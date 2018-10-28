@@ -69,7 +69,7 @@ class dqxcalender:
         tokod = (btime + 2) % 4 + 1
         tokom = (btime + 1) % 4 + 1
         tokosh = int((unixtime - 1524430800) / 86400 % 3) + 1
-        tokosh2 = int(tokosh + 2 % 3)
+        tokosh2 = int((tokosh + 2) % 3)
 
         self.tokoyamipage = self.tokoyamipage + 1
         if self.tokoyamipage == 2:
