@@ -13,28 +13,28 @@ class dqxcalender:
 
         now = datetime.datetime.now()
         unixtime = int(time.mktime(now.timetuple()))
-        btime = int((unixtime - 1535814000) / 3600 % 7)
+        btime = int((unixtime - 1543676400) / 3600 % 7)
         if btime == 0:
-            bnow = "s"
-            bnext = "k"
-        elif btime == 1:
             bnow = "k"
+            bnext = "m"
+        elif btime == 1:
+            bnow = "m"
             bnext = "b"
         elif btime == 2:
             bnow = "b"
             bnext = "s"
         elif btime == 3:
             bnow = "s"
-            bnext = "r"
+            bnext = "m"
         elif btime == 4:
-            bnow = "r"
+            bnow = "m"
             bnext = "r"
         elif btime == 5:
             bnow = "r"
             bnext = "j"
         else:
             bnow = "j"
-            bnext = "s"
+            bnext = "k"
         imagedata = ledtoolkitobject.imagenew()
         bfilenamenow = self.boueigunresourcedir + bnow + ".png"
         imagebnow = ledtoolkitobject.imageload(bfilenamenow)
@@ -43,17 +43,21 @@ class dqxcalender:
 
         imagedata = ledtoolkitobject.imagecopy(imagedata,imagebnow,"northeast")
         bname = self.boueigunname(bnow)
-        ledtoolkitobject.fontrender(imagedata,"small","1","9",bname,"#FFF","shadow")
+        ledtoolkitobject.fontrender(imagedata,"medium","0","2",bname,"#FFF","shadow")
+        ledtoolkitobject.fontrender(imagedata,"small","1","14",u'兵団',"#FFF","shadow")
         hourdata = datetime.datetime.now().strftime("%H")
-        hourdata = unicode(hourdata) + u'時'
+        hourdata = unicode(hourdata)
         ledtoolkitobject.fontrender(imagedata,"medium","0","0",hourdata,"#FFF","shadow")
+        ledtoolkitobject.fontrender(imagedata,"small","1","2",u'時',"#FFF","shadow")
 
         imagedata = ledtoolkitobject.imagecopy(imagedata,imagebnext,"southeast")
         bname = self.boueigunname(bnext)
-        ledtoolkitobject.fontrender(imagedata,"small","3","9",bname,"#FFF","shadow")
+        ledtoolkitobject.fontrender(imagedata,"medium","1","2",bname,"#FFF","shadow")
+        ledtoolkitobject.fontrender(imagedata,"small","3","14",u'兵団',"#FFF","shadow")
         hourdata = (datetime.datetime.now() + datetime.timedelta(hours=1)).strftime("%H")
-        hourdata = unicode(hourdata) + u'時'
+        hourdata = unicode(hourdata) + u': '
         ledtoolkitobject.fontrender(imagedata,"medium","1","0",hourdata,"#FFF","shadow")
+        ledtoolkitobject.fontrender(imagedata,"small","3","2",u'時',"#FFF","shadow")
 
         return (imagedata)
 
@@ -99,11 +103,13 @@ class dqxcalender:
 
     def boueigunname(self,i):
         if i == "j":
-            return (u'闇朱の獣牙兵団')
+            return (u'闇朱の獣牙')
         elif i == "s":
-            return (u'蒼怨の屍獄兵団')
+            return (u'蒼怨の屍獄')
         elif i == "k":
-            return (u'紫炎の鉄機兵団')
+            return (u'紫炎の鉄機')
         elif i == "b":
-            return (u'深碧の造魔兵団')
+            return (u'深碧の造魔')
+        elif i == "m":
+            return (u'銀甲の凶蟲')
         return (u'？？？？？？？')
